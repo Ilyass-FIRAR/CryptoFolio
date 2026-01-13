@@ -189,3 +189,227 @@ function rP() {
     };
   });
 }
+const fA = $("#fA"),
+  aId = $("#aId"),
+  aName = $("#aName"),
+  aSym = $("#aSym"),
+  aCg = $("#aCg"),
+  aQty = $("#aQty"),
+  aBuy = $("#aBuy"),
+  aDate = $("#aDate"),
+  aPort = $("#aPort");
+
+const aTb = $("#aTb"),
+  aDet = $("#aDet"),
+  aQ = $("#aQ"),
+  aS = $("#aS");
+
+$("#aClr").onclick = () => {
+  [aId, aName, aSym, aCg, aQty, aBuy, aDate].forEach((x) => (x.value = ""));
+  aPort.value = "";
+  $("#assetMode").textContent = "Create";
+};
+
+function invested(a) { return n(a.quantity) * n(a.buyPrice); }
+
+fA.onsubmit = (e) => {
+  e.preventDefault();
+  if (!fA.checkValidity()) return;
+
+  const arr = get(K.a);
+  const id = aId.value || uid();
+
+  const obj = {
+    id,
+    name: aName.value.trim(),
+    symbol: aSym.value.trim().toUpperCase(),
+    coingeckoId: aCg.value.trim().toLowerCase(),
+    quantity: n(aQty.value),
+    buyPrice: n(aBuy.value),
+    buyDate: aDate.value,
+    portfolioId: aPort.value || "",
+    currentPrice: 0,
+    lastUpdated: null,
+  };
+
+  const i = arr.findIndex((x) => x.id === id);
+  if (i >= 0) {
+    obj.currentPrice = arr[i].currentPrice || 0;
+    obj.lastUpdated = arr[i].lastUpdated || null;
+    arr[i] = obj;
+    al("Asset updated ✅", "success");
+  } else {
+    arr.push(obj);
+    al("Asset added ✅", "success");
+  }
+
+  set(K.a, arr);
+  $("#aClr").click();
+  rA();
+  dash();
+};
+
+aQ.oninput = rA;
+aS.onchange = rA;
+
+function sortA(list, mode) {
+  const c = [...list];
+  if (mode === "name_desc") c.sort((a, b) => b.name.localeCompare(a.name));
+  else if (mode === "inv_desc") c.sort((a, b) => invested(b) - invested(a));
+  else c.sort((a, b) => a.name.localeCompare(b.name));
+  return c;
+}
+
+function rA() {
+  const A = get(K.a),
+    P = get(K.p),
+    q = aQ.value.trim().toLowerCase();
+
+  let L = A.filter(
+    (a) =>
+      a.name.toLowerCase().includes(q) ||
+      a.symbol.toLowerCase().includes(q) ||
+      (a.coingeckoId || "").toLowerCase().includes(q)
+  );
+
+  L = sortA(L, aS.value);
+  aTb.innerHTML = "";
+
+  if (!L.length) {
+    aTb.innerHTML = `<tr><td class="py-3 text-slate-500" colspan="5">No assets yet.</td></tr>`;
+    portSel();
+    return;
+  }
+
+  L.forEach((a) => {
+    const inv = invested(a);
+    aTb.insertAdjacentHTML(
+      "beforeend",
+      `<tr class="border-b last:border-b-0">
+        <td class="py-2 pr-2">
+          <button class="text-sky-700 hover:underline font-semibold" data-v="${a.id}">
+            ${esc(a.name)} <span class="text-slate-500">(${esc(a.symbol)})</span>
+          </button>
+          <div class="text-xs text-slate-400">id: <span class="font-mono">${esc(a.coingeckoId || "-")}</span></div>
+        </td>
+        <td class="py-2 pr-2">${a.quantity}</td>
+        <td class="py-2 pr-2">${usd(a.buyPrice)}</td>
+        <td class="py-2 pr-2">${usd(inv)}</td>
+        <td class="py-2 text-right">
+          <button class="px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-sm" data-e="${a.id}">Edit</button>
+          <button class="ml-1 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-sm" data-d="${a.id}">Delete</button>
+        </td>
+      </tr>`
+    );
+  });
+
+  aTb.querySelectorAll("button").forEach((b) => {
+    const id = b.dataset.v || b.dataset.e || b.dataset.d;
+    if (b.dataset.v) b.onclick = () => detA(id);
+    if (b.dataset.e) b.onclick = () => editA(id);
+    if (b.dataset.d) b.onclick = () => delA(id);
+  });
+
+  portSel();
+}
+
+function detA(id) {
+  const a = get(K.a).find((x) => x.id === id);
+  if (!a) return;
+
+  const pn = get(K.p).find((p) => p.id === a.portfolioId)?.name || "(No portfolio)";
+  const cur = a.currentPrice ? usd(a.currentPrice) : `<span class="text-slate-400">not loaded</span>`;
+
+  aDet.innerHTML = `
+    <div class="font-bold text-slate-800">${esc(a.name)} <span class="text-slate-500">(${esc(a.symbol)})</span></div>
+    <div class="text-sm text-slate-500 mt-1">CoinGecko: <span class="font-mono">${esc(a.coingeckoId || "-")}</span></div>
+    <div class="text-sm text-slate-600 mt-2">Qty: <b>${a.quantity}</b> • Buy: <b>${usd(a.buyPrice)}</b> • Current: <b>${cur}</b></div>
+    <div class="text-sm text-slate-600 mt-1">Portfolio: <b>${esc(pn)}</b></div>
+  `;
+}
+
+function editA(id) {
+  const a = get(K.a).find((x) => x.id === id);
+  if (!a) return;
+
+  aId.value = a.id;
+  aName.value = a.name;
+  aSym.value = a.symbol;
+  aCg.value = a.coingeckoId || "";
+  aQty.value = a.quantity;
+  aBuy.value = a.buyPrice;
+  aDate.value = a.buyDate || "";
+  aPort.value = a.portfolioId || "";
+  $("#assetMode").textContent = "Edit";
+
+  al("Editing asset ✏️", "info", 1800);
+  detA(id);
+}
+
+function delA(id) {
+  const a = get(K.a).find((x) => x.id === id);
+  if (!a || !confirm(`Delete "${a.name}" ?`)) return;
+
+  set(K.a, get(K.a).filter((x) => x.id !== id));
+  al("Asset deleted ✅", "warning");
+  rA();
+  dash();
+  aDet.textContent = "Select an asset from the table.";
+}
+
+function portSel() {
+  const P = get(K.p),
+    cur = aPort.value;
+
+  aPort.innerHTML =
+    `<option value="">(No portfolio)</option>` +
+    P.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+
+  aPort.value = cur || "";
+}
+
+async function cgCurrent(ids) {
+  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(
+    ids.join(",")
+  )}&vs_currencies=usd`;
+
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("CoinGecko HTTP " + r.status);
+  return r.json();
+}
+
+async function updPrices() {
+  const A = get(K.a);
+  const ids = [...new Set(A.map((a) => a.coingeckoId).filter(Boolean))];
+  if (!ids.length) {
+    al("Add assets with CoinGecko ID first.", "warning", 3000);
+    return;
+  }
+
+  const data = await cgCurrent(ids);
+  const now = new Date().toISOString();
+
+  set(
+    K.a,
+    A.map((a) => ({
+      ...a,
+      currentPrice: n(data[a.coingeckoId]?.usd),
+      lastUpdated: now,
+    }))
+  );
+}
+
+$("#refresh").onclick = async () => {
+  try {
+    $("#refresh").disabled = true;
+    $("#refresh").textContent = "Loading...";
+    await updPrices();
+    dash();
+    al("Current prices updated ✅", "success", 2500);
+  } catch (e) {
+    al(`API error ❌: ${e.message}`, "danger", 4000);
+  } finally {
+    $("#refresh").disabled = false;
+    $("#refresh").textContent = "Prix (API)";
+  }
+};
