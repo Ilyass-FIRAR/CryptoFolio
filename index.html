@@ -1,47 +1,90 @@
-<!doctype html><html lang="fr"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CryptoFolio</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-</head><body>
+<!doctype html>
+<html lang="fr">
 
-<div class="app">
-  <aside class="sb">
-    <div class="brand"><i class="fa-solid fa-chart-line"></i><b>CryptoFolio</b></div>
-    <button class="navb active" data-v="dash"><i class="fa-solid fa-gauge"></i>Dashboard</button>
-    <button class="navb" data-v="assets"><i class="fa-brands fa-bitcoin"></i>Actifs</button>
-    <button class="navb" data-v="ports"><i class="fa-solid fa-wallet"></i>Portefeuilles</button>
-    <button class="navb" data-v="api"><i class="fa-solid fa-cloud-arrow-down"></i>API</button>
-  </aside>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CryptoFolio</title>
 
-  <main class="main">
-    <header class="top">
-      <span class="badge text-bg-dark">Projet js</span>
-      <div class="d-flex gap-2">
-        <button id="reset" class="btn btn-outline-danger btn-sm">Reset</button>
-      </div>
-    </header>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
 
-    <div class="container-fluid mt-3"><div id="al"></div></div>
-
-    <!-- DASH -->
-    <section id="v-dash" class="v container-fluid mt-2">
-      <div class="d-flex justify-content-between align-items-center">
-        <h3 class="m-0">Dashboard</h3>
-        <button id="refresh" class="btn btn-primary btn-sm"><i class="fa-solid fa-rotate"></i> Prix (API)</button>
+<body class="bg-slate-50 text-slate-900">
+  <div class="min-h-screen flex">
+    <aside class="w-72 shrink-0 bg-slate-900 text-slate-100 p-5 flex flex-col gap-2 shadow-xl">
+      <div class="flex items-center gap-3">
+        <div class="size-10 rounded-2xl bg-sky-500/15 grid place-items-center text-sky-300 font-black">CF</div>
+        <div>
+          <div class="text-lg font-extrabold leading-tight">CryptoFolio</div>
+        </div>
       </div>
 
-      <div class="row g-3 mt-1">
-        <div class="col-md-4"><div class="kpi"><div class="tmut">Valeur actuelle</div><div id="kTot" class="k">0</div></div></div>
-        <div class="col-md-4"><div class="kpi"><div class="tmut">Profit / Perte</div><div id="kPnl" class="k">0</div><div id="kPct" class="tmut">0%</div></div></div>
-        <div class="col-md-4"><div class="kpi"><div class="tmut">Nb actifs</div><div id="kCnt" class="k">0</div></div></div>
-      </div>
+      <nav class="mt-6 flex flex-col gap-2">
+        <button class="nav-btn active" data-v="dash">Dashboard</button>
+        <button class="nav-btn" data-v="assets">Assets</button>
+        <button class="nav-btn" data-v="ports">Portfolios</button>
+      </nav>
 
-      <div class="row g-3 mt-2">
-        <div class="col-lg-7"><div class="card"><div class="card-header bg-white">Valeur par actif</div><div class="card-body"><canvas id="bar"></canvas></div></div></div>
-        <div class="col-lg-5"><div class="card"><div class="card-header bg-white">Répartition</div><div class="card-body"><canvas id="pie"></canvas></div></div></div>
+      <div class="mt-auto pt-4 border-t border-white/10 text-xs text-slate-400">
+        <div class="flex items-center justify-between">
+        </div>
       </div>
-    </section>
+    </aside>
+    <main class="flex-1 min-w-0">
+      <header class="sticky top-0 z-10 bg-white/70 backdrop-blur border-b border-slate-200">
+        <div class="px-6 py-4 flex items-center justify-between">
+          <div>
+            <h1 id="pageTitle" class="text-base font-bold">Dashboard</h1>
+            <p id="pageHint" class="text-sm text-slate-500">Overview + charts + current prices update.</p>
+          </div>
 
-    
+
+        </div>
+      </header>
+      <div class="px-6 pt-4">
+        <div id="al"></div>
+      </div>
+      <div class="px-6 py-6 space-y-8">
+        <section id="v-dash" class="view">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="text-sm text-slate-500">Current prices from CoinGecko (USD)</div>
+              <div class="text-xs text-slate-400">Click “Prix (API)” to refresh current prices.</div>
+            </div>
+            <button id="refresh" class="btn-primary">Prix (API)</button>
+          </div>
+
+          <div class="grid lg:grid-cols-4 gap-4 mt-4">
+            <div class="card">
+              <div class="text-sm text-slate-500">Total invested</div>
+              <div id="kInv" class="text-3xl font-black mt-1">$0.00</div>
+            </div>
+            <div class="card">
+              <div class="text-sm text-slate-500">Total value (current)</div>
+              <div id="kTot" class="text-3xl font-black mt-1">$0.00</div>
+            </div>
+            <div class="card">
+              <div class="text-sm text-slate-500">P/L</div>
+              <div id="kPnl" class="text-3xl font-black mt-1">$0.00</div>
+              <div id="kPct" class="text-sm text-slate-500 mt-1">0.00%</div>
+            </div>
+            <div class="card">
+              <div class="text-sm text-slate-500">Assets count</div>
+              <div id="kCnt" class="text-3xl font-black mt-1">0</div>
+              <div class="text-xs text-slate-400 mt-1">Portfolios: <span id="kPorts">0</span></div>
+            </div>
+          </div>
+          <div class="card mt-4">
+            <div class="font-bold">Holdings (current value)</div>
+            <div class="text-sm text-slate-500">Based on stored quantity × currentPrice (API).</div>
+
+            <div class="mt-4 overflow-auto">
+              <table class="w-full text-sm">
+                <thead class="sticky top-0 bg-white">
+                  <tr class="text-left text-slate-500 border-b">
+                    <th class="py-2 pr-2">Asset</th>
+                    <th class="py-2 pr-2">Qty</th>
+                    <th class="py-2 pr-2">Buy</th>
+                    <th class="py-2 pr-2">Current</th>
