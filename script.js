@@ -413,3 +413,120 @@ $("#refresh").onclick = async () => {
     $("#refresh").textContent = "Prix (API)";
   }
 };
+const histCache = new Map();
+let histTimer = null;
+
+async function cgHistoryPrice(coingeckoId, isoDate) {
+  const id = (coingeckoId || "").trim().toLowerCase();
+  const dt = isoDate;
+  if (!id || !dt) throw new Error("Missing coingeckoId/date");
+
+  const key = `${id}|${dt}`;
+  if (histCache.has(key)) return histCache.get(key);
+
+  const [y, m, d] = dt.split("-");
+  const url = `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}/history?date=${d}-${m}-${y}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`CoinGecko HTTP ${r.status}`);
+
+  const j = await r.json();
+  const price = j?.market_data?.current_price?.usd;
+  if (!price) throw new Error("No USD price for that date");
+
+  histCache.set(key, price);
+  return price;
+}
+
+async function autoFillBuyPrice() {
+  const id = aCg.value.trim().toLowerCase();
+  const dt = aDate.value;
+  if (!id || !dt) return;
+
+  const prev = aBuy.value;
+  aBuy.disabled = true;
+  aBuy.placeholder = "Fetching...";
+
+  try {
+    const p = await cgHistoryPrice(id, dt);
+    aBuy.value = Number(p).toFixed(2);
+    if (!prev) al("Buy price auto-filled ✅ (historical)", "info", 2000);
+  } catch (e) {
+    al(`Historical price unavailable ⚠️ (${e.message})`, "warning", 3000);
+  } finally {
+    aBuy.disabled = false;
+    aBuy.placeholder = "auto or manual";
+  }
+}
+
+function scheduleAutoFill() {
+  clearTimeout(histTimer);
+  histTimer = setTimeout(autoFillBuyPrice, 600);
+}
+
+aDate.addEventListener("change", scheduleAutoFill);
+aCg.addEventListener("change", scheduleAutoFill);
+aCg.addEventListener("blur", scheduleAutoFill);
+
+function dash() {
+  const A = get(K.a);
+  const P = get(K.p);
+
+  const inv = A.reduce((s, a) => s + n(a.quantity) * n(a.buyPrice), 0);
+  const cur = A.reduce((s, a) => s + n(a.quantity) * n(a.currentPrice), 0);
+  const pnl = cur - inv;
+  const pct = inv ? (pnl / inv) * 100 : 0;
+
+  $("#kInv").textContent = usd(inv);
+  $("#kTot").textContent = usd(cur);
+  $("#kPnl").textContent = usd(pnl);
+  $("#kPct").textContent = pct.toFixed(2) + "%";
+  $("#kCnt").textContent = String(A.length);
+  $("#kPorts").textContent = String(P.length);
+
+  $("#kPnl").classList.toggle("text-green-700", pnl >= 0);
+  $("#kPnl").classList.toggle("text-red-700", pnl < 0);
+
+  // Table
+  const tb = $("#dashTb");
+  tb.innerHTML = "";
+
+  if (!A.length) {
+    tb.innerHTML = `<tr><td class="py-3 text-slate-500" colspan="6">No assets yet.</td></tr>`;
+    updateCharts([], []);
+    return;
+  }
+
+  // Values for charts (current value)
+  const labels = A.map((a) => a.symbol || a.name);
+  const values = A.map((a) => n(a.quantity) * n(a.currentPrice));
+  updateCharts(labels, values);
+
+  A.forEach((a) => {
+    const invA = n(a.quantity) * n(a.buyPrice);
+    const valA = n(a.quantity) * n(a.currentPrice);
+    const pnlA = valA - invA;
+
+    tb.insertAdjacentHTML(
+      "beforeend",
+      `<tr class="border-b last:border-b-0">
+        <td class="py-2 pr-2">
+          <div class="font-semibold">${esc(a.name)} <span class="text-slate-500">(${esc(a.symbol)})</span></div>
+          <div class="text-xs text-slate-400 font-mono">${esc(a.coingeckoId || "-")}</div>
+        </td>
+        <td class="py-2 pr-2">${a.quantity}</td>
+        <td class="py-2 pr-2">${usd(a.buyPrice)}</td>
+        <td class="py-2 pr-2">${a.currentPrice ? usd(a.currentPrice) : `<span class="text-slate-400">-</span>`}</td>
+        <td class="py-2 pr-2">${usd(valA)}</td>
+        <td class="py-2 pr-2 ${pnlA >= 0 ? "text-green-700" : "text-red-700"}">${usd(pnlA)}</td>
+      </tr>`
+    );
+  });
+}
+
+
+
+initCharts();
+rP();
+rA();
+dash();
+show("dash");
