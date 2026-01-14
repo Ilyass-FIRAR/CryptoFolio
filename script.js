@@ -1,12 +1,18 @@
+//Clés utilisées dans le localStorage
 const K = { a: "cryptofolio_assets", p: "cryptofolio_portfolios" };
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 
-const uid = () => Math.random().toString(16).slice(2) + Date.now().toString(16);
-const n = (x) => (Number.isFinite(+x) ? +x : 0);
-const usd = (x) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n(x));
 
+// Génère un identifiant unique simple
+const uid = () => Math.random().toString(16).slice(2) + Date.now().toString(16);
+// Convertit une valeur en nombre sécurisé
+const n = (x) => (Number.isFinite(+x) ? +x : 0);
+
+const usd = (x) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n(x));
+// Récupère des données depuis le localStorage
 const get = (k) => JSON.parse(localStorage.getItem(k) || "[]");
+// Récupère des données depuis le localStorage
 const set = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
 const esc = (s) =>
@@ -44,12 +50,14 @@ const titles = {
   ports: ["Portfolios", "Create portfolios and assign assets."],
 };
 
+// Change la vue affichée (dashboard, assets, portfolios)
 function show(v) {
   Object.entries(V).forEach(([k, e]) => e.classList.toggle("hidden", k !== v));
   $$(".nav-btn").forEach((b) => b.classList.toggle("active", b.dataset.v === v));
   $("#pageTitle").textContent = titles[v][0];
   $("#pageHint").textContent = titles[v][1];
 
+  // Recharge les données selon la vue
   if (v === "assets") rA();
   if (v === "ports") rP();
   if (v === "dash") dash();
@@ -368,6 +376,7 @@ function portSel() {
   aPort.value = cur || "";
 }
 
+//recuperation les prix act depuis coingecko
 async function cgCurrent(ids) {
   const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(
     ids.join(",")
@@ -380,6 +389,7 @@ async function cgCurrent(ids) {
 
 async function updPrices() {
   const A = get(K.a);
+    // Récupère les IDs CoinGecko uniques
   const ids = [...new Set(A.map((a) => a.coingeckoId).filter(Boolean))];
   if (!ids.length) {
     al("Add assets with CoinGecko ID first.", "warning", 3000);
@@ -389,6 +399,7 @@ async function updPrices() {
   const data = await cgCurrent(ids);
   const now = new Date().toISOString();
 
+  // Mise à jour des assets avec le prix actuel
   set(
     K.a,
     A.map((a) => ({
@@ -467,6 +478,7 @@ aDate.addEventListener("change", scheduleAutoFill);
 aCg.addEventListener("change", scheduleAutoFill);
 aCg.addEventListener("blur", scheduleAutoFill);
 
+// Met à jour les statistiques du dashboard
 function dash() {
   const A = get(K.a);
   const P = get(K.p);
@@ -486,7 +498,6 @@ function dash() {
   $("#kPnl").classList.toggle("text-green-700", pnl >= 0);
   $("#kPnl").classList.toggle("text-red-700", pnl < 0);
 
-  // Table
   const tb = $("#dashTb");
   tb.innerHTML = "";
 
